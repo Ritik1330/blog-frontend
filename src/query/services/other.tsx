@@ -1,7 +1,13 @@
 import axios from "axios";
-import { HEROIMAGE, TRANSLATER } from "./urls";
+// import { HEROIMAGE, TRANSLATER } from "./urls";
 
-// export const test = async () => await axios.get(API_BASE_URL + "/posts");
+const API_BASE_URL = "http://localhost:4000/api/v1";
+const getApiUrl = (endpoint: string) => API_BASE_URL + endpoint;
+const HEROIMAGE = getApiUrl("/image");
+const TRANSLATER = getApiUrl("/translater");
+
+
+
 
 export const UplodImage = async (e: any) => {
   return await axios.post(HEROIMAGE, e, {

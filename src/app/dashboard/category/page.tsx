@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Tag, TagInput } from "@/components/tag-input";
+// import { Tag, TagInput } from "@/components/tag-input";
+import { Tag, TagInput } from "emblor";
 
 import {
   Sheet,
@@ -57,8 +58,12 @@ import {
 import { Ellipsis, ArrowDownAZ } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useTranslater } from "@/query/hooks";
+import { useGetCategories, useTranslater } from "@/query/hooks";
 import { BASE_URL } from "../../../../config/constants";
+import { useNewCategory } from "@/query/hooks";
+import { CategoryType } from "@/types/Category";
+import { extractTexts } from "@/helpers/tagsFilter";
+import { slugBuilder } from "@/helpers/slug";
 
 interface Category {
   _id: string;
@@ -214,30 +219,44 @@ const formSchema = z.object({
   slug: z.string().min(2, {
     message: "slug must be at least 2 characters.",
   }),
-  visibility: z.optional(z.enum(["hamburger_menu", "main_menu", "both"])),
+  visibility: z.optional(z.enum(["hamburgerMenu", "mainMenu", "both"])),
 
   // description: z.optional(z.string()),
   description: z.string().optional(),
   // tags: z.optional(z.array(z.string())),
   categoryType: z.optional(z.enum(["section", "SubSection"])),
-  parentCategory: z.string().optional(),
+  category: z.string().optional(),
 
   keywords: z
     .array(
       z.object({
         id: z.string(),
         text: z.string(),
-      })
+      }),
     )
     .optional(),
 });
 
 export default function CategoryPage() {
   const {
+    data: AllCategories,
+    isError: CategoriesFetchFail,
+    isFetched,
+    isFetching,
+    isRefetching,
+    refetch,
+  } = useGetCategories();
+  const {
     mutate: translaterMutate,
     data: generatedslug,
     isSuccess,
   } = useTranslater();
+  const {
+    mutate: newCategoryMutate,
+    data: newCategoryData,
+    isSuccess: CategoryIsSuccess,
+  } = useNewCategory();
+  console.log(AllCategories);
 
   const [categoryToggle, setCategoryToggle] = React.useState(false);
 
@@ -245,26 +264,39 @@ export default function CategoryPage() {
     resolver: zodResolver(formSchema),
     mode: "all",
     defaultValues: {
-      name: undefined,
-      slug: undefined,
-      description: undefined,
+      name: "",
+      slug: "",
+      description: "",
       keywords: [],
-      parentCategory: undefined,
+      category: undefined,
       visibility: "both",
       categoryType: "section",
     },
   });
   const [tags, setTags] = React.useState<Tag[]>([]);
+  const [activeTagIndex, setActiveTagIndex] = React.useState<number | null>(
+    null,
+  );
+  // const [slug, setSlug] = React.useState("");
   const { setValue } = form;
 
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log("data"); // Handle form submission here
-    console.log(data); // Handle form submission here
+    var keywordTexts: string[] = [];
+
+    if (data.keywords !== undefined && data.keywords !== null) {
+      keywordTexts = extractTexts(data.keywords);
+    }
+    const CategoryData: CategoryType = {
+      ...data,
+      keywords: keywordTexts,
+    };
+    console.log(CategoryData);
+    newCategoryMutate(CategoryData);
   };
 
   const slugTranslater = async (e: string) => {
     const text = form.getValues("name");
-    console.log(text);
+
     if (text) {
       translaterMutate(text);
     } else {
@@ -273,12 +305,11 @@ export default function CategoryPage() {
   };
 
   const slugSeter = async (e: string) => {
-    let slug = e.replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, "");
-    slug = slug.replace(/ /g, "-").toLowerCase();
-    slug = slug.replace(/ /g, "-").toLowerCase();
-    console.log(slug);
-    setValue("slug", slug);
+    const generatedSlug = await slugBuilder(e);
+
+    setValue("slug", generatedSlug);
   };
+
   useEffect(() => {
     let str = generatedslug?.data.translated;
     if (str) {
@@ -291,12 +322,12 @@ export default function CategoryPage() {
   }, [isSuccess]);
 
   return (
-    <div className="flex flex-col gap-4 w-full ">
+    <div className="flex w-full flex-col gap-4">
       <PageTitle title="Categorys" />
       <section>
-        <div className=" flex flex-row justify-between min-h-10 w-full container mx-auto pt-5">
+        <div className="container mx-auto flex min-h-10 w-full flex-row justify-between pt-5">
           <Sheet>
-            <SheetTrigger className="bg-primary rounded-md px-3 text-white">
+            <SheetTrigger className="rounded-md bg-primary px-3 text-white">
               Add Category
             </SheetTrigger>
             <SheetContent className="overflow-y-auto">
@@ -304,7 +335,7 @@ export default function CategoryPage() {
                 <SheetTitle>Create Category</SheetTitle>
                 <div>
                   <Switch
-                    className=" absolute right-0"
+                    className="absolute right-0"
                     checked={categoryToggle}
                     onCheckedChange={() => setCategoryToggle(!categoryToggle)}
                   />
@@ -316,7 +347,7 @@ export default function CategoryPage() {
                       {categoryToggle && (
                         <FormField
                           control={form.control}
-                          name="parentCategory"
+                          name="category"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Parent Category</FormLabel>
@@ -330,9 +361,21 @@ export default function CategoryPage() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="m@example.com">
-                                    m@example.com
-                                  </SelectItem>
+                                  {isFetched && (
+                                    <div>
+                                      {AllCategories.map(
+                                        (e: any, index: any) => (
+                                          <SelectItem
+                                            key={index}
+                                            value={e.name}
+                                          >
+                                            {e.name}
+                                          </SelectItem>
+                                        ),
+                                      )}
+                                    </div>
+                                  )}
+
                                   <SelectItem value="m@google.com">
                                     m@google.com
                                   </SelectItem>
@@ -379,7 +422,7 @@ export default function CategoryPage() {
                         name="slug"
                         render={({ field }) => (
                           <FormItem>
-                            <div className="flex justify-between ">
+                            <div className="flex justify-between">
                               <FormLabel>Slug</FormLabel>
                               <TooltipProvider>
                                 <Tooltip>
@@ -399,12 +442,13 @@ export default function CategoryPage() {
                             <FormControl>
                               <Input
                                 placeholder="Slug"
-                                // defaultValue={slug}
+                                // defaultValue={"riti"}
                                 onChangeCapture={(e) =>
                                   slugSeter(e.currentTarget.value)
                                 }
                                 type="text"
                                 {...field}
+                                // value={slug}
                               />
                             </FormControl>
                             <FormDescription className="text-green-600">
@@ -440,52 +484,34 @@ export default function CategoryPage() {
                           </FormItem>
                         )}
                       />
+
                       <FormField
                         control={form.control}
                         name="keywords"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tags</FormLabel>
-                            <FormControl>
+                          <FormItem className="flex flex-col items-start">
+                            <FormLabel className="text-left">Keyword</FormLabel>
+                            <FormControl className="w-full">
                               <TagInput
                                 {...field}
-                                placeholder="Enter a topic"
+                                placeholder="Enter a Keyword"
                                 tags={tags}
-                                className=""
+                                // className="sm:min-w-[450px]"
                                 setTags={(newTags) => {
                                   setTags(newTags);
                                   setValue(
                                     "keywords",
-                                    newTags as [Tag, ...Tag[]]
+                                    newTags as [Tag, ...Tag[]],
                                   );
                                 }}
+                                activeTagIndex={activeTagIndex}
+                                setActiveTagIndex={setActiveTagIndex}
                               />
                             </FormControl>
-                            <FormDescription>
-                              This is tags input.
+                            <FormDescription className="text-left">
+                              These are the topics that you&apos;re interested
+                              in.
                             </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="parentCategory"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <FormControl>
-                              <Select onValueChange={field.onChange}>
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="light">Light</SelectItem>
-                                  <SelectItem value="dark">Dark</SelectItem>
-                                  <SelectItem value="system">System</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -501,7 +527,7 @@ export default function CategoryPage() {
         </div>
       </section>
       <section>
-        <div className="container mx-auto ">
+        <div className="container mx-auto">
           <DataTable columns={columns} data={Categorydata} />
         </div>
       </section>

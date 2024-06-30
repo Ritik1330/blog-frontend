@@ -4,9 +4,8 @@ import {
   useQueryClient,
   useIsFetching,
 } from "@tanstack/react-query";
-import { UplodImage, Translater } from "./api";
 import { toast } from "sonner";
-import { ToastTitle } from "@radix-ui/react-toast";
+import { Translater, UplodImage } from "../services";
 
 // export const useTestHook = () => {
 //   return useQuery({
