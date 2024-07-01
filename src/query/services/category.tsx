@@ -11,6 +11,6 @@ export const newCategory = async (e: any) => {
 export const getAllCategories = async (e: any) => {
   const response = await axios.get("http://localhost:4000/api/v1/category/all");
   console.log(response.data)
-  return response.data.categories;
+  return response.data;
 
 };

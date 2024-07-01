@@ -4,17 +4,17 @@ import {
   useQueryClient,
   useIsFetching,
 } from "@tanstack/react-query";
-import { getAllCategories, newCategory } from "../services/category";
+import { newSubCategory, getAllSubCategories } from "../services";
 import { toast } from "sonner";
 
-export const useNewCategory = () => {
+export const useNewSubCategory = () => {
   return useMutation({
-    mutationFn: newCategory,
+    mutationFn: newSubCategory,
     onSuccess: () => {
-      toast.success("The category has been successfully created.");
+      toast.success("The SubCategory has been successfully created.");
     },
     onError(error: any, variables, context) {
-      toast.error("Category creation failed", {
+      toast.error("SubCategory creation failed", {
         description:
           error?.response?.data?.message || error?.response?.statusText,
       });
@@ -22,9 +22,9 @@ export const useNewCategory = () => {
   });
 };
 
-export function useGetAllCategories() {
+export function useGetAllSubCategories() {
   return useQuery({
-    queryFn: getAllCategories,
+    queryFn: getAllSubCategories,
     queryKey: ["getCategories"],
   });
 }

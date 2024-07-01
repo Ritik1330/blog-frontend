@@ -58,9 +58,14 @@ import {
 import { Ellipsis, ArrowDownAZ } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useGetCategories, useTranslater } from "@/query/hooks";
+import {
+  useTranslater,
+  useGetAllCategories,
+  useNewCategory,
+  useNewSubCategory,
+  useGetAllSubCategories,
+} from "@/query/hooks";
 import { BASE_URL } from "../../../../config/constants";
-import { useNewCategory } from "@/query/hooks";
 import { CategoryType } from "@/types/Category";
 import { extractTexts } from "@/helpers/tagsFilter";
 import { slugBuilder } from "@/helpers/slug";
@@ -245,7 +250,7 @@ export default function CategoryPage() {
     isFetching,
     isRefetching,
     refetch,
-  } = useGetCategories();
+  } = useGetAllCategories();
   const {
     mutate: translaterMutate,
     data: generatedslug,
@@ -254,11 +259,13 @@ export default function CategoryPage() {
   const {
     mutate: newCategoryMutate,
     data: newCategoryData,
-    isSuccess: CategoryIsSuccess,
+    isSuccess: categoryIsSuccess,
   } = useNewCategory();
-  console.log(AllCategories);
-
-  const [categoryToggle, setCategoryToggle] = React.useState(false);
+  const {
+    mutate: newSubCategoryMutate,
+    data: newSubCategoryData,
+    isSuccess: SubCategoryIsSuccess,
+  } = useNewSubCategory();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -268,7 +275,7 @@ export default function CategoryPage() {
       slug: "",
       description: "",
       keywords: [],
-      category: undefined,
+      category: "",
       visibility: "both",
       categoryType: "section",
     },
@@ -280,6 +287,7 @@ export default function CategoryPage() {
   // const [slug, setSlug] = React.useState("");
   const { setValue } = form;
 
+  const [categoryToggle, setCategoryToggle] = React.useState(false);
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
     var keywordTexts: string[] = [];
 
@@ -291,7 +299,15 @@ export default function CategoryPage() {
       keywords: keywordTexts,
     };
     console.log(CategoryData);
-    newCategoryMutate(CategoryData);
+    if (categoryToggle) {
+      if (CategoryData.category) {
+        newSubCategoryMutate(CategoryData);
+      } else {
+        toast.warning("CATEGORY_SLECT");
+      }
+    } else {
+      newCategoryMutate(CategoryData);
+    }
   };
 
   const slugTranslater = async (e: string) => {
@@ -316,9 +332,7 @@ export default function CategoryPage() {
       slugSeter(str);
     }
 
-    // return () => {
-    //   second
-    // }
+    // return () => {second }
   }, [isSuccess]);
 
   return (
@@ -363,7 +377,7 @@ export default function CategoryPage() {
                                 <SelectContent>
                                   {isFetched && (
                                     <div>
-                                      {AllCategories.map(
+                                      {AllCategories.categories.map(
                                         (e: any, index: any) => (
                                           <SelectItem
                                             key={index}
@@ -375,13 +389,6 @@ export default function CategoryPage() {
                                       )}
                                     </div>
                                   )}
-
-                                  <SelectItem value="m@google.com">
-                                    m@google.com
-                                  </SelectItem>
-                                  <SelectItem value="m@support.com">
-                                    m@support.com
-                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormDescription>
