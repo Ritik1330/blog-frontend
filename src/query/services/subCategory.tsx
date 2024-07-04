@@ -9,8 +9,7 @@ export const newSubCategory = async (e: any) => {
   });
 };
 export const getAllSubCategories = async (e: any) => {
-  const response = await axios.get("http://localhost:4000/api/v1/subCategory/all");
-  console.log(response.data)
+  const response = await axios.get(API_BASE_URL + "/subCategory/all");
+  console.log(response.data);
   return response.data;
-
 };

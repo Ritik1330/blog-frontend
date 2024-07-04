@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { any, string, z } from "zod";
-import { Tag, TagInput } from "@/components/tag-input";
+// import { Tag, TagInput } from "@/components/tag-input";
 import {
   Form,
   FormControl,
@@ -52,8 +52,9 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import {  useUplodImage } from "@/query/hooks";
+import { useUplodImage } from "@/query/hooks";
 import Image from "next/image";
+import { Tag, TagInput } from "emblor";
 
 type Props = {};
 
@@ -88,7 +89,7 @@ const formSchema = z.object({
   // createdBy: z.string().nonempty("Please enter Created By"),
   // updatedBy: z.array(z.string()).optional(),
   // publicAt: z.date().optional(),
-  
+
   // metadata: MetaDataSchema.optional(),
   // socialData: SocialDataSchema.optional(),
   // schemaData: z.array(SchemaDataSchema).optional(),
@@ -103,14 +104,23 @@ const formSchema = z.object({
       z.object({
         id: z.string(),
         text: z.string(),
-      })
+      }),
     )
     .optional(),
   canonicalUrl: z.string().optional(),
   index: z.boolean(),
   // Social data
+
   ogtitle: z.string().optional(),
-  // hashtags: z.array(z.string()).optional(),
+  ogImage: z.string().optional(),
+  hashtags: z
+    .array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+      }),
+    )
+    .optional(),
 });
 // ---------hero image Schema--------
 
@@ -121,7 +131,7 @@ const heroImageSchema = z.object({
     .refine((image) => image?.length == 1, "Hero image is required.")
     .refine(
       (image) => image[0]?.size <= 1024 * 1024 * 2,
-      `Max HeroImage size is 2MB.`
+      `Max HeroImage size is 2MB.`,
     ),
   // .refine(
   //   (image) =>
@@ -141,7 +151,7 @@ const metaSchema = z.object({
     z.object({
       id: z.string(),
       text: z.string(),
-    })
+    }),
   ),
   CanonicalUrl: z.string(),
   index: z.boolean(),
@@ -183,7 +193,8 @@ export default function Page({}: Props) {
 
       // socialData
       ogtitle: "",
-      // hashtags: ["post"],
+      ogImage: "",
+      hashtags: [],
 
       // socialData: {
       //   ogtitle: "",
@@ -196,6 +207,13 @@ export default function Page({}: Props) {
     },
   });
   const [keywords, setKeywords] = React.useState<Tag[]>([]);
+  const [activeKeywordIndex, setActiveKeywordIndex] = React.useState<
+    number | null
+  >(null);
+  const [hashtags, setHashtags] = React.useState<Tag[]>([]);
+  const [activeHashtagIndex, setActiveHashtagIndex] = React.useState<
+    number | null
+  >(null);
   const { setValue } = postform;
 
   const heroImageForm = useForm<z.infer<typeof heroImageSchema>>({
@@ -227,13 +245,13 @@ export default function Page({}: Props) {
   const handleSubmit1 = (e: z.infer<typeof formSchema>) => {
     alert("submit");
     console.log(postform);
-   
+
     console.log("first000000");
     console.log("data", e); // Handle form submission here
   };
 
   const [heroImagePreview, setHeroImagePreview] = useState<string | undefined>(
-    undefined
+    undefined,
   );
 
   const thumbImagevalidation = (e: any) => {
@@ -267,7 +285,7 @@ export default function Page({}: Props) {
   // const {data } = useTestHook()
 
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex w-full flex-col gap-4">
       <PageTitle title={`Create Article`} />
       {/* <Button>open</Button> */}
       <Card className="rounded-md">
@@ -276,7 +294,7 @@ export default function Page({}: Props) {
             onSubmit={postform.handleSubmit(handleSubmit1)}
             className="space-y-8"
           >
-            <div className="w-full flex justify-end gap-4 pr-5">
+            <div className="flex w-full justify-end gap-4 pr-5">
               <Button variant="outline" asChild>
                 <Link href="/preview">save</Link>
               </Button>
@@ -297,6 +315,28 @@ export default function Page({}: Props) {
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <FormField
+              control={postform.control}
+              name="slug"
+              render={({ field }) => {
+                return (
+                  <FormItem>
+                    <FormLabel>slug</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter Meta slug"
+                        type="text"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Recommended size is up to 100 charts.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={postform.control}
@@ -331,7 +371,7 @@ export default function Page({}: Props) {
 
             {/* HeroImageDialog */}
             <Dialog>
-              <DialogTrigger className=" text-neutral-90  rounded-md cursor-pointer inline-flex items-center bg-secondary p-2">
+              <DialogTrigger className="text-neutral-90 inline-flex cursor-pointer items-center rounded-md bg-secondary p-2">
                 <ImagePlus />
                 <span className="whitespace-nowrap px-1">add hero image</span>
               </DialogTrigger>
@@ -339,10 +379,10 @@ export default function Page({}: Props) {
                 <DialogHeader>
                   <DialogTitle>
                     Add Hero Image
-                    <i className="font-normal text-xs">(Max size is 2MB)</i>
+                    <i className="text-xs font-normal">(Max size is 2MB)</i>
                   </DialogTitle>
                   {/* <DialogDescription> */}
-                  <Tabs defaultValue="account" className=" w-full">
+                  <Tabs defaultValue="account" className="w-full">
                     <TabsList>
                       <TabsTrigger value="upload">Upload</TabsTrigger>
                       <TabsTrigger value="search">Search</TabsTrigger>
@@ -355,26 +395,26 @@ export default function Page({}: Props) {
                           onSubmit={heroImageForm.handleSubmit(heroImageSubmit)}
                           className=""
                         >
-                          <div className="absolute top-12 right-6  ">
+                          <div className="absolute right-6 top-12">
                             <Button id="heroImagefromID" type="submit">
                               HeroImage Submit
                             </Button>
                           </div>
 
                           {heroImagePreview && (
-                            <div className="flex flex-row max-w-52 max-h-40 m-auto bg-red-700">
+                            <div className="m-auto flex max-h-40 max-w-52 flex-row bg-red-700">
                               <Image
                                 width={100}
                                 height={100}
-                                className=" rounded-md"
+                                className="rounded-md"
                                 src={heroImagePreview}
                                 alt=""
                               />
-                              <div className=" right-8 flex flex-row h-fit gap-3 ">
-                                <div className=" drop-shadow-md hover:text-blue-300 hover:drop-shadow-2xl ">
+                              <div className="right-8 flex h-fit flex-row gap-3">
+                                <div className="drop-shadow-md hover:text-blue-300 hover:drop-shadow-2xl">
                                   <ExternalLink />
                                 </div>
-                                <div className=" text-red-500 hover:text-red-700 ">
+                                <div className="text-red-500 hover:text-red-700">
                                   <Trash2 />
                                 </div>
                               </div>
@@ -452,7 +492,7 @@ export default function Page({}: Props) {
             <EditorNoSSR />
             {/* rhs menu bar */}
             <Sheet>
-              <SheetTrigger className="-rotate-90 fixed -right-9 top-36  bg-primary rounded-t-md px-3  p-2 ">
+              <SheetTrigger className="fixed -right-9 top-36 -rotate-90 rounded-t-md bg-primary p-2 px-3">
                 Post Settings
               </SheetTrigger>
               <SheetContent className="overflow-y-auto">
@@ -461,35 +501,11 @@ export default function Page({}: Props) {
                   <div>
                     <Tabs defaultValue="account" className="w-full">
                       <TabsList>
-                        <TabsTrigger value="general">General</TabsTrigger>
                         <TabsTrigger value="metadata">Meta Data</TabsTrigger>
                         <TabsTrigger value="social">Social</TabsTrigger>
                         <TabsTrigger value="other">Other</TabsTrigger>
                       </TabsList>
-                      <TabsContent value="general">
-                        <FormField
-                          control={postform.control}
-                          name="slug"
-                          render={({ field }) => {
-                            return (
-                              <FormItem>
-                                <FormLabel>slug</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Enter Meta title"
-                                    type="text"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Recommended size is up to 100 charts.
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      </TabsContent>
+
                       <TabsContent value="metadata">
                         <FormField
                           control={postform.control}
@@ -543,17 +559,20 @@ export default function Page({}: Props) {
                               <FormLabel className="">keywords</FormLabel>
                               <FormControl>
                                 <TagInput
-                                  {...field}
-                                  placeholder="Enter keyword's"
-                                  tags={keywords}
                                   className=""
+                                  {...field}
+                                  placeholder="Enter a Keyword"
+                                  tags={keywords}
+                                  // className="sm:min-w-[450px]"
                                   setTags={(newTags) => {
                                     setKeywords(newTags);
                                     setValue(
                                       "keywords",
-                                      newTags as [Tag, ...Tag[]]
+                                      newTags as [Tag, ...Tag[]],
                                     );
                                   }}
+                                  activeTagIndex={activeKeywordIndex}
+                                  setActiveTagIndex={setActiveKeywordIndex}
                                 />
                               </FormControl>
                               <FormDescription>
@@ -590,7 +609,7 @@ export default function Page({}: Props) {
                           control={postform.control}
                           name="index"
                           render={({ field }) => (
-                            <FormItem className="flex flex-col ">
+                            <FormItem className="flex flex-col">
                               <FormLabel>Index</FormLabel>
                               <FormControl>
                                 <Checkbox
@@ -615,7 +634,7 @@ export default function Page({}: Props) {
                           render={({ field }) => {
                             return (
                               <FormItem>
-                                <FormLabel>Ogtitle Url</FormLabel>
+                                <FormLabel>Ogtitle</FormLabel>
                                 <FormControl>
                                   <Input
                                     placeholder="Enter ogtitle"
@@ -631,25 +650,49 @@ export default function Page({}: Props) {
                             );
                           }}
                         />
-                        {/* <FormField
+                        <FormField
+                          control={postform.control}
+                          name="ogImage"
+                          render={({ field }) => {
+                            return (
+                              <FormItem>
+                                <FormLabel>ogImage</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter ogImage"
+                                    type="text"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  This is ogtitle
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            );
+                          }}
+                        />
+                        <FormField
                           control={postform.control}
                           name="hashtags"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="">keywords</FormLabel>
+                              <FormLabel className="">hashtags</FormLabel>
                               <FormControl>
                                 <TagInput
                                   {...field}
-                                  placeholder="Enter keyword's"
+                                  placeholder="Enter a hashtags"
                                   tags={keywords}
-                                  className=""
+                                  // className="sm:min-w-[450px]"
                                   setTags={(newTags) => {
                                     setKeywords(newTags);
                                     setValue(
-                                      "keywords",
-                                      newTags as [Tag, ...Tag[]]
+                                      "hashtags",
+                                      newTags as [Tag, ...Tag[]],
                                     );
                                   }}
+                                  activeTagIndex={activeHashtagIndex}
+                                  setActiveTagIndex={setActiveHashtagIndex}
                                 />
                               </FormControl>
                               <FormDescription>
@@ -659,7 +702,7 @@ export default function Page({}: Props) {
                               <FormMessage />
                             </FormItem>
                           )}
-                        /> */}
+                        />
                       </TabsContent>
                       <TabsContent value="other">Under devlopment</TabsContent>
                     </Tabs>

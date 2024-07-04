@@ -69,6 +69,7 @@ import { BASE_URL } from "../../../../config/constants";
 import { CategoryType } from "@/types/Category";
 import { extractTexts } from "@/helpers/tagsFilter";
 import { slugBuilder } from "@/helpers/slug";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Category {
   _id: string;
@@ -243,6 +244,9 @@ const formSchema = z.object({
 });
 
 export default function CategoryPage() {
+
+  const queryClient = useQueryClient()
+
   const {
     data: AllCategories,
     isError: CategoriesFetchFail,
@@ -260,7 +264,7 @@ export default function CategoryPage() {
     mutate: newCategoryMutate,
     data: newCategoryData,
     isSuccess: categoryIsSuccess,
-  } = useNewCategory();
+  } = useNewCategory(queryClient);
   const {
     mutate: newSubCategoryMutate,
     data: newSubCategoryData,
@@ -377,7 +381,7 @@ export default function CategoryPage() {
                                 <SelectContent>
                                   {isFetched && (
                                     <div>
-                                      {AllCategories.categories.map(
+                                      {AllCategories?.categories?.map(
                                         (e: any, index: any) => (
                                           <SelectItem
                                             key={index}

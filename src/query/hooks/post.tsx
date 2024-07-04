@@ -3,17 +3,16 @@ import {
   useMutation,
   useQueryClient,
   useIsFetching,
-  QueryClient,
 } from "@tanstack/react-query";
-import { getAllCategories, newCategory } from "../services";
-import { toast } from "sonner";
 
-export const useNewCategory = (queryClient: any) => {
+import { toast } from "sonner";
+import { getAllPost, newPost } from "../services";
+
+export const useNewPost = () => {
   return useMutation({
-    mutationFn: newCategory,
+    mutationFn: newPost,
     onSuccess: () => {
       toast.success("The category has been successfully created.");
-      queryClient.invalidateQueries({ queryKey: ["getCategories"] });
     },
     onError(error: any, variables, context) {
       toast.error("Category creation failed", {
@@ -24,9 +23,9 @@ export const useNewCategory = (queryClient: any) => {
   });
 };
 
-export function useGetAllCategories() {
+export function useGetAllpost() {
   return useQuery({
-    queryFn: getAllCategories,
+    queryFn: getAllPost,
     queryKey: ["getCategories"],
   });
 }
