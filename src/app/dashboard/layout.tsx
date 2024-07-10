@@ -14,11 +14,11 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps): JSX.Element => {
   return (
-    <div className={cn("min-h-screen w-full text-base flex ")}>
-     <div className="sticky top-0 h-screen  ">
+    <div className={cn("min-h-screen w-full text-base flex  bg-muted/40")}>   
+     <div className="sticky top-0 h-screen bg-background  ">
      <SideNavbar />
      </div>
-      <div className="px-4 w-full border-l">{children}</div>
+      <div className="w-full border-l ">{children}</div>
       {/* <Footer /> */}
     </div>
   );

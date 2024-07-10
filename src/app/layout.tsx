@@ -34,11 +34,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Header />
+          {/* <Header /> */}
           <TanstackProviders>{children}</TanstackProviders>
         </ThemeProvider>
         <Toaster richColors />
-        <Footer/>
+        {/* <Footer/> */}
       </body>
     </html>
   );

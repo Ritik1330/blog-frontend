@@ -257,7 +257,7 @@ export default function CategoryPage() {
   } = useGetAllCategories();
   const {
     mutate: translaterMutate,
-    data: generatedslug,
+    data: slugData,
     isSuccess,
   } = useTranslater();
   const {
@@ -292,6 +292,7 @@ export default function CategoryPage() {
   const { setValue } = form;
 
   const [categoryToggle, setCategoryToggle] = React.useState(false);
+
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
     var keywordTexts: string[] = [];
 
@@ -305,7 +306,9 @@ export default function CategoryPage() {
     console.log(CategoryData);
     if (categoryToggle) {
       if (CategoryData.category) {
+        console.log(CategoryData)
         newSubCategoryMutate(CategoryData);
+
       } else {
         toast.warning("CATEGORY_SLECT");
       }
@@ -331,12 +334,11 @@ export default function CategoryPage() {
   };
 
   useEffect(() => {
-    let str = generatedslug?.data.translated;
+    let str = slugData?.translation;
     if (str) {
       slugSeter(str);
     }
 
-    // return () => {second }
   }, [isSuccess]);
 
   return (
@@ -385,7 +387,7 @@ export default function CategoryPage() {
                                         (e: any, index: any) => (
                                           <SelectItem
                                             key={index}
-                                            value={e.name}
+                                            value={e._id}
                                           >
                                             {e.name}
                                           </SelectItem>
@@ -415,9 +417,9 @@ export default function CategoryPage() {
                                   placeholder="Category"
                                   type="text"
                                   {...field}
-                                  // onChangeCapture={(e) =>
-                                  //   slugGenerate(e.currentTarget.value)
-                                  // }
+                                // onChangeCapture={(e) =>
+                                //   slugGenerate(e.currentTarget.value)
+                                // }
                                 />
                               </FormControl>
                               {/* <FormDescription>
@@ -437,12 +439,9 @@ export default function CategoryPage() {
                               <FormLabel>Slug</FormLabel>
                               <TooltipProvider>
                                 <Tooltip>
-                                  <div
-                                    className=" "
-                                    onClick={() => slugTranslater("p")}
-                                  >
-                                    <ArrowDownAZ />
-                                  </div>
+                                  <TooltipTrigger asChild>
+                                    <ArrowDownAZ onClick={() => slugTranslater("p")} />
+                                  </TooltipTrigger>
 
                                   <TooltipContent>
                                     <p>Click heare for Generate slug</p>
@@ -459,7 +458,7 @@ export default function CategoryPage() {
                                 }
                                 type="text"
                                 {...field}
-                                // value={slug}
+                              // value={slug}
                               />
                             </FormControl>
                             <FormDescription className="text-green-600">
@@ -534,7 +533,7 @@ export default function CategoryPage() {
               </SheetHeader>
             </SheetContent>
           </Sheet>
-          <Button onClick={() => {}}>Migration</Button>
+          <Button onClick={() => { }}>Migration</Button>
         </div>
       </section>
       <section>

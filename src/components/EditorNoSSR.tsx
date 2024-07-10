@@ -77,6 +77,8 @@ const TOOLS = {
   },
 };
 
+
+
 const EditorWrapper = () => {
   useEffect(() => {
     const allWrappers = document.querySelectorAll(".editor-wrapper");

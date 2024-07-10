@@ -30,7 +30,7 @@ export default function SideNavbar() {
     setIsCollapsed(!isCollapsed);
   }
   return (
-    <div className="relative min-w-30 pb-10 pt-14 ">
+    <aside className="relative min-w-30 pb-10 pt-14 ">
       {!isMobile && (
         <div className="absolute top-2 right-[-20px]">
           <Button
@@ -105,6 +105,6 @@ export default function SideNavbar() {
           },
         ]}
       />
-    </div>
+    </aside>
   );
 }

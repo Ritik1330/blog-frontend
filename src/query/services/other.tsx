@@ -10,12 +10,14 @@ const TRANSLATER = getApiUrl("/translater");
 
 
 export const UplodImage = async (e: any) => {
-  return await axios.post(HEROIMAGE, e, {
+  const response = await axios.post(API_BASE_URL+"/image", e, {
     headers: {
       "content-type": "multipart/form-data",
     },
   });
+  return response.data;
 };
 export const Translater = async (e: any) => {
-  return await axios.put(`${TRANSLATER}?value=${e}`);
+  const response = await axios.put(`${TRANSLATER}?value=${e}`);
+  return response.data;
 };
