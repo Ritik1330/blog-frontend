@@ -1,16 +1,26 @@
 "use client";
 import dynamic from "next/dynamic";
-const EditorNoSSR = dynamic(() => import("@/components/EditorNoSSR"), {
+
+import { EditorContent, EditorRoot } from "novel";
+
+const Editor = dynamic(() => import("@/components/Editor"), {
   ssr: false,
 });
+import { EditorProps } from "@/components/Editor";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { ImagePlus, Trash2, ExternalLink, ArrowDownAZ, Search } from "lucide-react";
+import {
+  ImagePlus,
+  Trash2,
+  ExternalLink,
+  ArrowDownAZ,
+  Search,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
-import "./editorCustom.css";
 import Card from "@/components/Card";
-import React, { use, useEffect, useState } from "react";
+import React, { use, useCallback, useEffect, useState } from "react";
 import PageTitle from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +68,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+} from "@/components/ui/breadcrumb";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,26 +76,30 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
-
-import { useGetAllCategories, useGetAllTags, useTranslater, useUplodImage } from "@/query/hooks";
+import {
+  useGetAllCategories,
+  useGetAllTags,
+  useNewPost,
+  useTranslater,
+  useUplodImage,
+} from "@/query/hooks";
 import Image from "next/image";
 import { Tag, TagInput } from "emblor";
 import { extractTexts, transformedTags } from "@/helpers/tagsFilter";
 import { slugBuilder } from "@/helpers/slug";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ArticleInterface } from "@/types";
 
 type Props = {};
 
 // Define the schemaData schema
-const SchemaDataSchema = z.object({
-  type: z.string().optional(),
-  key: z.string().optional(),
-  data: z.array(z.record(z.any())).optional(),
-});
-
 const formSchema = z.object({
   title: z.string().min(20, {
     message: "Title must be at least 20 characters.",
@@ -94,7 +108,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   image: z.string().optional(),
   // .url(),
-  // blocks:z.array[],
+  content: z.any(),
   type: z.enum(["Article", "Slide", "Webstory", "EPaper"]),
   primaryCategory: z.string().optional(),
   // categories: z
@@ -126,12 +140,6 @@ const formSchema = z.object({
   status: z.enum(["Draft", "Published", "Archived"]),
   // publicAt: z.date().optional(),
 
-  // metadata: MetaDataSchema.optional(),
-  // socialData: SocialDataSchema.optional(),
-  // schemaData: z.array(SchemaDataSchema).optional(),
-  // views: z.string().nonempty("Please enter Views"),
-  // version: z.string().nonempty("Please enter Version"),
-
   // meta data
   metatitle: z.string().optional(),
   metaDescription: z.string().optional(),
@@ -160,8 +168,7 @@ const formSchema = z.object({
     .optional(),
   //Schema
   articleTypeSchema: z.enum(["None", "Article", "NewsArticle", "BlogPosting"]),
-  otherSchema: z.any()
-
+  otherSchema: z.any(),
 });
 // ---------hero image Schema--------
 
@@ -178,20 +185,13 @@ const heroImageSchema = z.object({
   credits: z.string(),
 });
 
-const metaSchema = z.object({
-  title: z.string(),
-  description: z.string().optional(),
-  keywords: z.array(
-    z.object({
-      id: z.string(),
-      text: z.string(),
-    }),
-  ),
-  CanonicalUrl: z.string(),
-  index: z.boolean(),
-});
-
-export default function Page({ }: Props) {
+export default function Page({}: Props) {
+  const {
+    mutate: articleMutate,
+    isError: isArticleMutationsError,
+    data: articleData,
+    error: ArticleMutationsError,
+  } = useNewPost();
   const {
     data: AllCategories,
     isError: CategoriesFetchFail,
@@ -203,7 +203,8 @@ export default function Page({ }: Props) {
     isError,
     data: heroimagedata,
     error,
-    isPending,
+    isPending: heroImageIsPending,
+    isSuccess: heroImageIsSuccess,
   } = useUplodImage();
 
   const {
@@ -221,7 +222,6 @@ export default function Page({ }: Props) {
     isSuccess: slugIsSuccess,
   } = useTranslater();
 
-
   const postform = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -229,7 +229,7 @@ export default function Page({ }: Props) {
       summary: "",
       description: "",
       image: "",
-      // blocks: [],
+      content: any,
       type: "Article",
       primaryCategory: "",
       // categories: [],
@@ -275,6 +275,9 @@ export default function Page({ }: Props) {
   const [activeHashtagIndex, setActiveHashtagIndex] = React.useState<
     number | null
   >(null);
+
+  const [preContent, setPreContent] = useState<EditorProps["data"]>(null);
+
   const { setValue } = postform;
 
   const heroImageForm = useForm<z.infer<typeof heroImageSchema>>({
@@ -288,21 +291,6 @@ export default function Page({ }: Props) {
     resolver: zodResolver(heroImageSchema),
   });
   const fileRef = heroImageForm.register("image", { required: true });
-
-  // const metaform = useForm<z.infer<typeof metaSchema>>({
-  //   resolver: zodResolver(metaSchema),
-  //   defaultValues: {
-  //     title: "",
-  //     description: "",
-  //     keywords: [],
-  //     CanonicalUrl: "",
-  //     index: true,
-  //   },
-  // });
-
-  // const [keywords, setKeywords] = React.useState<Tag[]>([]);
-  // const { setValue } = metaform;
-
 
   const [heroImagePreview, setHeroImagePreview] = useState<string | undefined>(
     undefined,
@@ -324,8 +312,6 @@ export default function Page({ }: Props) {
     HeroImageMutate(formData);
   };
 
-
-
   const slugTranslater = async (e: string) => {
     const text = postform.getValues("title");
 
@@ -336,17 +322,14 @@ export default function Page({ }: Props) {
     }
   };
 
-  const slugSeter = async (e: string) => {
-    const generatedSlug = await slugBuilder(e);
-
-    setValue("slug", generatedSlug);
+  const handleContentChange = (newContent: EditorProps["data"]) => {
+    setValue("content", newContent);
   };
 
   const articleSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log(data);
     if (!data.primaryCategory) {
-      toast.error("Please select the primary section.")
-      return
+      toast.error("Please select the primary section.");
+      return;
     }
     const metaData = {
       metatitle: data?.metatitle,
@@ -354,12 +337,12 @@ export default function Page({ }: Props) {
       keywords: data.keywords ? extractTexts(data.keywords) : [],
       canonicalUrl: data?.canonicalUrl,
       index: data?.index,
-    }
+    };
     const socialData = {
       ogtitle: data?.ogtitle,
       ogImage: data?.ogImage,
       hashtags: data.hashtags ? extractTexts(data.hashtags) : [],
-    }
+    };
 
     const schemaData = {
       articleTypeSchema: data?.articleTypeSchema,
@@ -367,18 +350,15 @@ export default function Page({ }: Props) {
       //   name:data?.,
       //   schemaData: data?.,
       // }
-    }
-
-
-    
+    };
 
     const ArticleData: ArticleInterface = {
       title: data.title,
       summary: data.summary,
       description: data.description,
       image: data?.image,
-      // blocks: data?.Block[],
-      type: data.type,
+      content: data?.content,
+      postType: data.type,
       primaryCategory: data.primaryCategory,
       categories: [data.primaryCategory],
       // subcategories: data.subcategories,
@@ -386,18 +366,28 @@ export default function Page({ }: Props) {
       tags: data.tags ? extractTexts(data.tags) : [],
       authors: data.authors ? extractTexts(data.authors) : [],
       status: data.status,
-      metadata: metaData,
+      metaData: metaData,
       socialData: socialData,
       schemaData: schemaData,
       version: 1,
     };
-
-    console.log(ArticleData)
-
-
+    console.log(ArticleData);
+    articleMutate(ArticleData);
   };
 
+  const slugSeter = useCallback(
+    async (e: string) => {
+      const generatedSlug = await slugBuilder(e);
+      setValue("slug", generatedSlug);
+    },
+    [setValue],
+  );
 
+  useEffect(() => {
+    if (slugData?.translation) {
+      slugSeter(slugData.translation);
+    }
+  }, [slugSeter, slugData]);
 
   useEffect(() => {
     let str = slugData?.translation;
@@ -405,14 +395,18 @@ export default function Page({ }: Props) {
       slugSeter(str);
     }
     if (heroimagedata) {
-      setValue("image", heroimagedata.image.url);
-      console.log(heroimagedata.image.url)
+      setValue("image", heroimagedata.image._id);
     }
-  }, [slugIsSuccess, heroimagedata, CategoriesIsFetched]);
+  }, [
+    slugIsSuccess,
+    heroimagedata,
+    slugData?.translation,
+    setValue,
+    slugSeter,
+  ]);
 
   return (
-
-    <div className="flex flex-col sm:gap-4 sm:py-4 ">
+    <div className="flex flex-col sm:gap-4 sm:py-4">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
         <Breadcrumb className="hidden md:flex">
           <BreadcrumbList>
@@ -449,7 +443,7 @@ export default function Page({ }: Props) {
               className="overflow-hidden rounded-full"
             >
               <Image
-                src="/frontend/src/assets/Avatar.png"
+                src="https://github.com/shadcn.png"
                 width={36}
                 height={36}
                 alt="Avatar"
@@ -468,41 +462,40 @@ export default function Page({ }: Props) {
         </DropdownMenu>
       </header>
       <main className="sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
-        <div className="flex w-full flex-col gap-4  bg-muted/40">
-          <div className=" flex justify-between">
+        <div className="flex w-full flex-col gap-4 bg-muted/40">
+          <div className="flex justify-between">
             <PageTitle title={`Create Article`} />
-            <div className="min-w-60" >  <Select
-
-              onValueChange={(e) => { setValue("primaryCategory", e); }}
-            // defaultValue={}
-            >
-              {/* <FormControl> */}
-              <SelectTrigger>
-                <SelectValue placeholder="Select Primery Category" />
-              </SelectTrigger>
-              {/* </FormControl> */}
-              <SelectContent>
-                {CategoriesIsFetched && (
-                  <div>
-                    {AllCategories?.categories?.map(
-                      (e: any, index: any) => (
-                        <SelectItem
-                          key={index}
-                          value={e._id}
-                        >
+            <div className="min-w-60">
+              <Select
+                onValueChange={(e) => {
+                  setValue("primaryCategory", e);
+                }}
+                // defaultValue={}
+              >
+                {/* <FormControl> */}
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Primery Category" />
+                </SelectTrigger>
+                {/* </FormControl> */}
+                <SelectContent>
+                  {CategoriesIsFetched && (
+                    <div>
+                      {AllCategories?.categories?.map((e: any, index: any) => (
+                        <SelectItem key={index} value={e._id}>
                           {e.name}
                         </SelectItem>
-                      ),
-                    )}
-                  </div>
-                )}
-              </SelectContent>
-            </Select></div>
+                      ))}
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <Card className="rounded-md bg-background ">
+          <Card className="rounded-md bg-background">
             <Form {...postform}>
               <form
+                id="article-form"
                 onSubmit={postform.handleSubmit(articleSubmit)}
                 className="space-y-8"
               >
@@ -513,7 +506,9 @@ export default function Page({ }: Props) {
                   <Button variant="secondary" asChild>
                     <Link href="/preview">Preview</Link>
                   </Button>
-                  <Button type="submit">Publish</Button>
+                  <Button id="article-form" type="submit">
+                    Publish
+                  </Button>
                 </div>
                 <FormField
                   control={postform.control}
@@ -545,7 +540,7 @@ export default function Page({ }: Props) {
                               }
                               type="text"
                               {...field}
-                            // value={slug}
+                              // value={slug}
                             />
                           </FormControl>
                           <FormDescription>
@@ -556,10 +551,10 @@ export default function Page({ }: Props) {
                       );
                     }}
                   />
-                  <div className=" content-center  p-4">
+                  <div className="content-center p-4">
                     <TooltipProvider>
                       <Tooltip>
-                        <TooltipContent className=" -top-4">
+                        <TooltipContent className="-top-4">
                           <p>Click heare for Generate slug</p>
                         </TooltipContent>
                         <TooltipTrigger asChild>
@@ -600,11 +595,365 @@ export default function Page({ }: Props) {
                   )}
                 />
 
-                {/* HeroImageDialog */}
+                {/* rhs menu bar */}
+                <Sheet>
+                  <SheetTrigger className="fixed -right-9 top-36 -rotate-90 rounded-t-md bg-primary p-2 px-3">
+                    Post Settings
+                  </SheetTrigger>
+                  <SheetContent className="overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Sco & Post Setings</SheetTitle>
+                      <div>
+                        <Tabs defaultValue="account" className="w-full">
+                          <TabsList>
+                            <TabsTrigger value="general">General</TabsTrigger>
+                            <TabsTrigger value="metadata">
+                              Meta Data
+                            </TabsTrigger>
+                            <TabsTrigger value="social">Social</TabsTrigger>
+                            <TabsTrigger value="schema">Schema</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="general">
+                            <FormField
+                              control={postform.control}
+                              name="tags"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="">Tags</FormLabel>
+                                  <FormControl>
+                                    <TagInput
+                                      className="shadow-none"
+                                      enableAutocomplete={true}
+                                      autocompleteOptions={transformedTags(
+                                        AllTagsData?.tags,
+                                      )}
+                                      restrictTagsToAutocompleteOptions={true}
+                                      {...field}
+                                      placeholder="Enter a Tags"
+                                      tags={tags}
+                                      setTags={(newTags) => {
+                                        setTags(newTags);
+                                        setValue(
+                                          "tags",
+                                          newTags as [Tag, ...Tag[]],
+                                        );
+                                      }}
+                                      activeTagIndex={activeTagsIndex}
+                                      setActiveTagIndex={setActiveTagsIndex}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Minimum 5 and maximum 10 tags are
+                                    recommended.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={postform.control}
+                              name="authors"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="">Authors</FormLabel>
+                                  <FormControl>
+                                    <TagInput
+                                      styleClasses={{
+                                        input: "shadow-none",
+                                      }}
+                                      className=""
+                                      {...field}
+                                      placeholder="Enter a Authors"
+                                      tags={authors}
+                                      setTags={(newTags) => {
+                                        setAuthors(newTags);
+                                        setValue(
+                                          "authors",
+                                          newTags as [Tag, ...Tag[]],
+                                        );
+                                      }}
+                                      activeTagIndex={activeAuthorsIndex}
+                                      setActiveTagIndex={setActiveAuthorsIndex}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Minimum 5 and maximum 10 tags are
+                                    recommended.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </TabsContent>
+                          <TabsContent value="metadata">
+                            <FormField
+                              control={postform.control}
+                              name="metatitle"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem>
+                                    <FormLabel>meta title</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Enter Meta title"
+                                        type="text"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      Recommended size is a maximum of 100
+                                      characters.
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                            <FormField
+                              control={postform.control}
+                              name="metaDescription"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem>
+                                    <FormLabel>meta Description</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Enter Meta Description"
+                                        type="text"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      Recommended size is a maximum of 500
+                                      characters.
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                            <FormField
+                              control={postform.control}
+                              name="keywords"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="">keywords</FormLabel>
+                                  <FormControl>
+                                    <TagInput
+                                      styleClasses={{
+                                        input: "shadow-none",
+                                      }}
+                                      {...field}
+                                      placeholder="Enter a Keyword"
+                                      tags={keywords}
+                                      setTags={(newTags) => {
+                                        setKeywords(newTags);
+                                        setValue(
+                                          "keywords",
+                                          newTags as [Tag, ...Tag[]],
+                                        );
+                                      }}
+                                      activeTagIndex={activeKeywordIndex}
+                                      setActiveTagIndex={setActiveKeywordIndex}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Minimum 5 and maximum 10 keywords are
+                                    recommended.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={postform.control}
+                              name="canonicalUrl"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem>
+                                    <FormLabel>Canonical Url</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Enter Canonical Url"
+                                        type="text"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      This is Canonical Url
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                            <FormField
+                              control={postform.control}
+                              name="index"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                  <FormLabel>Index</FormLabel>
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormDescription>
+                                      If you want to index it, leave the
+                                      checkbox checked.
+                                    </FormDescription>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+                          </TabsContent>
+                          <TabsContent value="social">
+                            <FormField
+                              control={postform.control}
+                              name="ogtitle"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem>
+                                    <FormLabel>Ogtitle</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Enter ogtitle"
+                                        type="text"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      This is ogtitle
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                            <FormField
+                              control={postform.control}
+                              name="ogImage"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem>
+                                    <FormLabel>ogImage</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Enter ogImage"
+                                        type="text"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      This is ogtitle
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                            <FormField
+                              control={postform.control}
+                              name="hashtags"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>hashtags</FormLabel>
+                                  <FormControl>
+                                    <TagInput
+                                      styleClasses={{
+                                        input: "shadow-none",
+                                      }}
+                                      F
+                                      {...field}
+                                      placeholder="Enter a hashtags"
+                                      tags={hashtags}
+                                      setTags={(newTags) => {
+                                        setHashtags(newTags);
+                                        setValue(
+                                          "hashtags",
+                                          newTags as [Tag, ...Tag[]],
+                                        );
+                                      }}
+                                      activeTagIndex={activeHashtagIndex}
+                                      setActiveTagIndex={setActiveHashtagIndex}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Minimum 5 and maximum 10 HashTags are
+                                    recommended.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </TabsContent>
+                          <TabsContent value="schema">
+                            <FormField
+                              control={postform.control}
+                              name="articleTypeSchema"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Article Type Schema</FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a verified email to display" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="None">None</SelectItem>
+                                      <SelectItem value="Article">
+                                        Article
+                                      </SelectItem>
+                                      <SelectItem value="NewsArticle">
+                                        NewsArticle
+                                      </SelectItem>
+                                      <SelectItem value="BlogPosting">
+                                        BlogPosting
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    You can manage article Type Schema.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </TabsContent>
+                        </Tabs>
+                      </div>
+                    </SheetHeader>
+                  </SheetContent>
+                </Sheet>
+              </form>
+            </Form>
+
+            {/* HeroImageDialog */}
+            {heroImageForm.getValues("image") && heroimagedata?.image?.url ? (
+              <Image
+                width={100}
+                height={100}
+                className="rounded-md"
+                src={heroimagedata?.image?.url}
+                alt={heroimagedata?.image?.title}
+              />
+            ) : (
+              <div className="mt-8 flex flex-col space-y-2">
+                <h2 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Hero Image
+                </h2>
                 <Dialog>
                   <DialogTrigger className="text-neutral-90 inline-flex cursor-pointer items-center rounded-md bg-secondary p-2">
                     <ImagePlus />
-                    <span className="whitespace-nowrap px-1">add hero image</span>
+                    <span className="whitespace-nowrap px-1">
+                      add hero image
+                    </span>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
@@ -622,13 +971,23 @@ export default function Page({ }: Props) {
                         <TabsContent value="upload">
                           <Form {...heroImageForm}>
                             <form
-                              id="heroImagefromID"
-                              onSubmit={heroImageForm.handleSubmit(heroImageSubmit)}
+                              id="image-form"
+                              onSubmit={heroImageForm.handleSubmit(
+                                heroImageSubmit,
+                              )}
                               className=""
                             >
                               <div className="absolute right-6 top-12">
-                                <Button id="heroImagefromID" type="submit">
-                                  HeroImage Submit
+                                <Button
+                                  form="image-form"
+                                  type="submit"
+                                  disabled={heroImageIsPending}
+                                >
+                                  {heroImageIsPending ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    "HeroImage Submit"
+                                  )}
                                 </Button>
                               </div>
 
@@ -719,337 +1078,31 @@ export default function Page({ }: Props) {
                     </DialogHeader>
                   </DialogContent>
                 </Dialog>
+              </div>
+            )}
 
-             {EditorNoSSR&&    <EditorNoSSR />}
-                {/* rhs menu bar */}
-                <Sheet>
-                  <SheetTrigger className="fixed -right-9 top-36 -rotate-90 rounded-t-md bg-primary p-2 px-3">
-                    Post Settings
-                  </SheetTrigger>
-                  <SheetContent className="overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>Sco & Post Setings</SheetTitle>
-                      <div>
-                        <Tabs defaultValue="account" className="w-full">
-                          <TabsList>
-                            <TabsTrigger value="general">General</TabsTrigger>
-                            <TabsTrigger value="metadata">Meta Data</TabsTrigger>
-                            <TabsTrigger value="social">Social</TabsTrigger>
-                            <TabsTrigger value="schema">Schema</TabsTrigger>
-                          </TabsList>
-                          <TabsContent value="general">
-                            <FormField
-                              control={postform.control}
-                              name="tags"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="">Tags</FormLabel>
-                                  <FormControl>
-                                    <TagInput
-                                      className="shadow-none"
-                                      enableAutocomplete={true}
-                                      autocompleteOptions={transformedTags(AllTagsData?.tags)}
-                                      // restrictTagsToAutocompleteOptions={true}
-                                      {...field}
-                                      placeholder="Enter a Tags"
-                                      tags={tags}
-                                      setTags={(newTags) => {
-                                        setTags(newTags);
-                                        setValue(
-                                          "tags",
-                                          newTags as [Tag, ...Tag[]],
-                                        );
-                                      }}
-                                      activeTagIndex={activeTagsIndex}
-                                      setActiveTagIndex={setActiveTagsIndex}
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    Minimum 5 and maximum 10 tags are recommended.
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={postform.control}
-                              name="authors"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="">Authors</FormLabel>
-                                  <FormControl>
-                                    <TagInput
-                                      styleClasses={{
-                                        input: 'shadow-none',
-                                      }}
-                                      className=""
-                                      {...field}
-                                      placeholder="Enter a Authors"
-                                      tags={authors}
-                                      setTags={(newTags) => {
-                                        setAuthors(newTags);
-                                        setValue(
-                                          "authors",
-                                          newTags as [Tag, ...Tag[]],
-                                        );
-                                      }}
-                                      activeTagIndex={activeAuthorsIndex}
-                                      setActiveTagIndex={setActiveAuthorsIndex}
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    Minimum 5 and maximum 10 tags are recommended.
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </TabsContent>
-                          <TabsContent value="metadata">
-                            <FormField
-                              control={postform.control}
-                              name="metatitle"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem>
-                                    <FormLabel>meta title</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        placeholder="Enter Meta title"
-                                        type="text"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormDescription>
-                                      Recommended size is a maximum of 100 characters.
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                            <FormField
-                              control={postform.control}
-                              name="metaDescription"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem>
-                                    <FormLabel>meta Description</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        placeholder="Enter Meta Description"
-                                        type="text"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormDescription>
-                                      Recommended size is a maximum of 500 characters.
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                            <FormField
-                              control={postform.control}
-                              name="keywords"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="">keywords</FormLabel>
-                                  <FormControl>
-                                    <TagInput
-                                      styleClasses={{
-                                        input: 'shadow-none',
-                                      }}
-                                      {...field}
-                                      placeholder="Enter a Keyword"
-                                      tags={keywords}
-                                      setTags={(newTags) => {
-                                        setKeywords(newTags);
-                                        setValue(
-                                          "keywords",
-                                          newTags as [Tag, ...Tag[]],
-                                        );
-                                      }}
-                                      activeTagIndex={activeKeywordIndex}
-                                      setActiveTagIndex={setActiveKeywordIndex}
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    Minimum 5 and maximum 10 keywords are
-                                    recommended.
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={postform.control}
-                              name="canonicalUrl"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem>
-                                    <FormLabel>Canonical Url</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        placeholder="Enter Canonical Url"
-                                        type="text"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormDescription>
-                                      This is Canonical Url
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                            <FormField
-                              control={postform.control}
-                              name="index"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                  <FormLabel>Index</FormLabel>
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <div className="space-y-1 leading-none">
-                                    <FormDescription>
-                                      If you want to index it, leave the checkbox
-                                      checked.
-                                    </FormDescription>
-                                  </div>
-                                </FormItem>
-                              )}
-                            />
-                          </TabsContent>
-                          <TabsContent value="social">
-                            <FormField
-                              control={postform.control}
-                              name="ogtitle"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem>
-                                    <FormLabel>Ogtitle</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        placeholder="Enter ogtitle"
-                                        type="text"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormDescription>
-                                      This is ogtitle
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                            <FormField
-                              control={postform.control}
-                              name="ogImage"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem>
-                                    <FormLabel>ogImage</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        placeholder="Enter ogImage"
-                                        type="text"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormDescription>
-                                      This is ogtitle
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                );
-                              }}
-                            />
-                            <FormField
-                              control={postform.control}
-                              name="hashtags"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel >hashtags</FormLabel>
-                                  <FormControl>
-                                    <TagInput
-                                      styleClasses={{
-                                        input: 'shadow-none',
-                                      }} F
-                                      {...field}
-                                      placeholder="Enter a hashtags"
-                                      tags={hashtags}
-                                      setTags={(newTags) => {
-                                        setHashtags(newTags);
-                                        setValue(
-                                          "hashtags",
-                                          newTags as [Tag, ...Tag[]],
-                                        );
-                                      }}
-                                      activeTagIndex={activeHashtagIndex}
-                                      setActiveTagIndex={setActiveHashtagIndex}
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    Minimum 5 and maximum 10 HashTags are
-                                    recommended.
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </TabsContent>
-                          <TabsContent value="schema">
-
-                            <FormField
-                              control={postform.control}
-                              name="articleTypeSchema"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Article Type Schema</FormLabel>
-                                  <Select
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select a verified email to display" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="None">None</SelectItem>
-                                      <SelectItem value="Article">Article</SelectItem>
-                                      <SelectItem value="NewsArticle">NewsArticle</SelectItem>
-                                      <SelectItem value="BlogPosting">BlogPosting</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <FormDescription>
-                                    You can manage article Type Schema.
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </TabsContent>
-                        </Tabs>
-                      </div>
-                    </SheetHeader>
-                  </SheetContent>
-                </Sheet>
-              </form>
-            </Form>
+            <div className="mt-8 flex flex-col space-y-2">
+              <h2 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Body*
+              </h2>
+              <Editor
+                data={preContent}
+                onChange={handleContentChange}
+                holder="editor_create"
+              />
+              {/* <EditorRoot>
+                <EditorContent
+                  initialContent={undefined}
+                  onUpdate={({ editor }) => {
+                    const json = editor.getJSON();
+                    // setContent(json);
+                  }}
+                />
+              </EditorRoot> */}
+            </div>
           </Card>
         </div>
       </main>
     </div>
-
-
   );
 }

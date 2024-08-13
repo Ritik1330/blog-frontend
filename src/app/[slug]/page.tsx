@@ -16,7 +16,7 @@ type Props = {};
 export default function page({}: Props) {
   return (
     <>
-      <article className=" mx-3 sm:mx-10 my-3">
+      <article className="mx-4 md:mx-16 lg:mx-24 xl:mx-36 2xl:mx-auto 2xl:max-w-7xl py-6 lg:py-3">
         <Ticker />
         <div className="w-full bg mt-3">
           <Breadcrumb>

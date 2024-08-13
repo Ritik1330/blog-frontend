@@ -6,16 +6,16 @@ import {
 } from "@tanstack/react-query";
 
 import { toast } from "sonner";
-import { getAllPost, newPost } from "../services";
+import { getAllstaticPage, newstaticPage } from "../services";
 
-export const useNewPost = () => {
+export const useNewStaticPage = () => {
   return useMutation({
-    mutationFn: newPost,
+    mutationFn: newstaticPage,
     onSuccess: () => {
-      toast.success("The Post has been successfully created.");
+      toast.success("The static Page has been successfully created.");
     },
     onError(error: any, variables, context) {
-      toast.error("post creation failed", {
+      toast.error("static Page creation failed", {
         description:
           error?.response?.data?.message || error?.response?.statusText,
       });
@@ -23,9 +23,9 @@ export const useNewPost = () => {
   });
 };
 
-export function useAllpost() {
+export function useAllstaticPage() {
   return useQuery({
-    queryFn: getAllPost,
-    queryKey: ["getpost"],
+    queryFn: getAllstaticPage,
+    queryKey: ["getAllstaticPage"],
   });
 }

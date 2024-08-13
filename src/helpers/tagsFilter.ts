@@ -1,7 +1,7 @@
 import { TransformedTag } from "@/types";
 
 export const extractTexts = (data: any[]): string[] => {
-  return data.map((keyword) => keyword.text);
+  return data.map((keyword) => keyword.id);
 };
 
 export const transformedTags = (originalTags: any[]): TransformedTag[] => {

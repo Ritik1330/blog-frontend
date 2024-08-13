@@ -1,7 +1,7 @@
 "use client";
 // import { translate } from "@vitalets/google-translate-api";
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import Image from "next/image";
 import { DataTable } from "@/components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
@@ -244,8 +244,7 @@ const formSchema = z.object({
 });
 
 export default function CategoryPage() {
-
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   const {
     data: AllCategories,
@@ -306,9 +305,8 @@ export default function CategoryPage() {
     console.log(CategoryData);
     if (categoryToggle) {
       if (CategoryData.category) {
-        console.log(CategoryData)
+        console.log(CategoryData);
         newSubCategoryMutate(CategoryData);
-
       } else {
         toast.warning("CATEGORY_SLECT");
       }
@@ -327,20 +325,24 @@ export default function CategoryPage() {
     }
   };
 
-  const slugSeter = async (e: string) => {
+  const slugSeter = useCallback(async (e: string) => {
     const generatedSlug = await slugBuilder(e);
-
     setValue("slug", generatedSlug);
-  };
+  }, [setValue]);
 
+ 
   useEffect(() => {
-    let str = slugData?.translation;
-    if (str) {
-      slugSeter(str);
-    }
+    if (slugData?.translation) {
+    slugSeter(slugData.translation);
+  }
+  }, [slugSeter,slugData]);
 
-  }, [isSuccess]);
+ // useEffect(() => {
+  // if (slugData?.translation) {
+  //   slugSeter(slugData.translation);
+  // }
 
+  // }, [slugData.translation]);
   return (
     <div className="flex w-full flex-col gap-4">
       <PageTitle title="Categorys" />
@@ -385,10 +387,7 @@ export default function CategoryPage() {
                                     <div>
                                       {AllCategories?.categories?.map(
                                         (e: any, index: any) => (
-                                          <SelectItem
-                                            key={index}
-                                            value={e._id}
-                                          >
+                                          <SelectItem key={index} value={e._id}>
                                             {e.name}
                                           </SelectItem>
                                         ),
@@ -417,9 +416,9 @@ export default function CategoryPage() {
                                   placeholder="Category"
                                   type="text"
                                   {...field}
-                                // onChangeCapture={(e) =>
-                                //   slugGenerate(e.currentTarget.value)
-                                // }
+                                  // onChangeCapture={(e) =>
+                                  //   slugGenerate(e.currentTarget.value)
+                                  // }
                                 />
                               </FormControl>
                               {/* <FormDescription>
@@ -440,7 +439,9 @@ export default function CategoryPage() {
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <ArrowDownAZ onClick={() => slugTranslater("p")} />
+                                    <ArrowDownAZ
+                                      onClick={() => slugTranslater("p")}
+                                    />
                                   </TooltipTrigger>
 
                                   <TooltipContent>
@@ -458,7 +459,7 @@ export default function CategoryPage() {
                                 }
                                 type="text"
                                 {...field}
-                              // value={slug}
+                                // value={slug}
                               />
                             </FormControl>
                             <FormDescription className="text-green-600">
@@ -533,7 +534,7 @@ export default function CategoryPage() {
               </SheetHeader>
             </SheetContent>
           </Sheet>
-          <Button onClick={() => { }}>Migration</Button>
+          <Button onClick={() => {}}>Migration</Button>
         </div>
       </section>
       <section>

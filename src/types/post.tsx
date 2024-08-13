@@ -30,8 +30,28 @@ interface schemaData {
   summary?: string | undefined;
   description?: string;
   image: string | undefined;
-  // blocks: Block[];
-  type: "Article" | "Slide" | "Webstory" | "EPaper";
+  content: any;
+  postType: "Article" | "Slide" | "Webstory" | "EPaper";
+  primaryCategory:string
+  categories: string[];
+  // subcategories: string[];
+  slug: string;
+  tags: string[];
+  authors?: string[];
+  status: "Draft" | "Published" | "Archived";
+  publicAt?: Date;
+  metaData?: metaData;
+  socialData?: socialData;
+  schemaData?: schemaData;
+  version?:number,  
+}
+ export interface ArticleInterface{
+  title: string;
+  summary?: string | undefined;
+  description?: string;
+  image: string | undefined;
+  content: any;
+  postType: "Article" | "Slide" | "Webstory" | "EPaper";
   primaryCategory:string
   categories: string[];
   // subcategories: string[];
@@ -43,6 +63,5 @@ interface schemaData {
   metadata?: metaData;
   socialData?: socialData;
   schemaData?: schemaData;
-  version?:number,
-  
+  version?:number,  
 }

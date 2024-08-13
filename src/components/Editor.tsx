@@ -1,13 +1,11 @@
-// "use client";
-
-import dynamic from "next/dynamic";
-import { ComponentType } from "react";
-
+import React, { useEffect, useRef, useState } from "react";
+import EditorJS, { EditorConfig } from "@editorjs/editorjs";
+import CodeTool from "@editorjs/code";
 import Card from "@/components/Card";
-import React, { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+
 // import { Card } from "@/components/ui/card";
 import PageTitle from "@/components/PageTitle";
-import EditorJS from "@editorjs/editorjs";
 import Header from "@editorjs/header";
 import RawTool from "@editorjs/raw";
 import Checklist from "@editorjs/checklist";
@@ -17,8 +15,14 @@ import Quote from "@editorjs/quote";
 import Table from "@editorjs/table";
 import Marker from "@editorjs/marker";
 
-type Props = {};
-const TOOLS = {
+export interface EditorProps {
+  data: any | null;
+  onChange: (data: any) => void;
+  holder: string;
+  className?: string;
+}
+
+const EDITOR_TOOLS = {
   header: {
     class: Header,
     inlineToolbar: true,
@@ -75,60 +79,58 @@ const TOOLS = {
     inlineToolbar: true,
     shortcut: "CMD+SHIFT+R",
   },
+  code: {
+    class: CodeTool,
+    inlineToolbar: true,
+    shortcut: "CMD+SHIFT+A",
+  },
 };
 
+const Editor: React.FC<EditorProps> = ({
+  data,
+  onChange,
+  holder,
+  className,
+}) => {
+  const editorInstance = useRef<EditorJS | null>(null);
 
-
-const EditorWrapper = () => {
   useEffect(() => {
-    const allWrappers = document.querySelectorAll(".editor-wrapper");
-
-    allWrappers.forEach((wrapper) => {
-      const editor = wrapper.querySelector(".editorjs");
-
-      // Check if editor element exists before initializing EditorJS
-      if (editor) {
-        const editorInstance = new EditorJS({
-          // holder: editor,
-          holder: "editorjs",
-          // minHeight: 0,
-          tools: TOOLS,
-          // data: {
-          //   blocks: [
-          //     {
-          //       type: 'paragraph',
-          //       data: {
-          //         text: 'delete me',
-          //       },
-          //     },
-          //    ..
-          //   ],
-          // },
-          onReady: () => {
-            wrapper.addEventListener("click", () => {
-              allWrappers.forEach((wr) => wr.classList.remove("active"));
-              wrapper.classList.add("active");
-            });
+    const initializeEditor = async () => {
+      if (!editorInstance.current) {
+        editorInstance.current = new EditorJS({
+          holder: holder,
+          placeholder: "Start writing here...",
+          tools: EDITOR_TOOLS,
+          data: data || {}, // Initialize with existing data if provided
+          onChange: async () => {
+            if (editorInstance.current) {
+              const savedData = await editorInstance.current.save();
+              onChange(savedData);
+            }
           },
         });
-
-        return () => {
-          editorInstance.destroy(); // Cleanup when component unmounts
-        };
       }
-    });
-  }, []); // Run this effect only once on component mount
+    };
+
+    initializeEditor();
+
+    return () => {
+      if (editorInstance.current) {
+        editorInstance.current.destroy;
+        editorInstance.current = null;
+      }
+    };
+  }, []);
 
   return (
-    <div className=" flex flex-col gap-4 w-full ">
-      <PageTitle title={"Aritcle Body"} />
-      <div className="editor-wrapper">
-        <Card className="rounded-md ">
-          <div id="editorjs" className="editorjs"></div>
-        </Card>
-      </div>
-    </div>
+    <div
+      className={cn(
+        "min-h-96 w-full rounded-sm border shadow dark:[&>*]:min-h-96 dark:[&>*]:bg-black",
+        className,
+      )}
+      id={holder}
+    />
   );
 };
 
-export default EditorWrapper;
+export default Editor;
