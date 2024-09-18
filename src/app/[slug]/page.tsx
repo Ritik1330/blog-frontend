@@ -16,9 +16,9 @@ type Props = {};
 export default function page({}: Props) {
   return (
     <>
-      <article className="mx-4 md:mx-16 lg:mx-24 xl:mx-36 2xl:mx-auto 2xl:max-w-7xl py-6 lg:py-3">
+      <article className="mx-4 min-h-dvh py-6 md:mx-16 lg:mx-24 lg:py-3 xl:mx-36 2xl:mx-auto 2xl:max-w-7xl">
         <Ticker />
-        <div className="w-full bg mt-3">
+        <div className="bg mt-3 w-full">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -35,14 +35,14 @@ export default function page({}: Props) {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <div className="grid gap-2 mt-3 lg:grid-cols-3 ">
-          <div className="bg-secondary  col-span-3 lg:col-span-2 ">
+        <div className="mt-3 grid gap-2 lg:grid-cols-3">
+          <div className="col-span-3 flex flex-col gap-3 lg:col-span-2">
             <List />
             <List />
             <List />
             <List />
           </div>
-          <div className="lg:col-span-1  col-span-3 hidden lg:block bg-secondary  ">
+          <div className="col-span-3 flex flex-col gap-3 lg:col-span-1">
             <RHS_1 />
             <RHS_1 />
             <RHS_1 />
@@ -51,7 +51,7 @@ export default function page({}: Props) {
             <RHS_1 />
           </div>
         </div>
-        <div className="h-96"></div>
+        <div className=""></div>
       </article>
     </>
   );

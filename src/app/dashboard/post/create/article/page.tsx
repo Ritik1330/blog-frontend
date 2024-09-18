@@ -482,7 +482,7 @@ export default function Page({}: Props) {
                     <div>
                       {AllCategories?.categories?.map((e: any, index: any) => (
                         <SelectItem key={index} value={e._id}>
-                          {e.name}
+                          {e.title}
                         </SelectItem>
                       ))}
                     </div>

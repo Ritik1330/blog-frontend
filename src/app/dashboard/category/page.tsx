@@ -73,7 +73,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 interface Category {
   _id: string;
-  name: string;
+  title: string;
   slug: string;
   menuHierarchy: number;
   sectionType: string;
@@ -83,7 +83,7 @@ interface Category {
 const Categorydata: Category[] = [
   {
     _id: "603b2c64e4cb147e18505317",
-    name: "Example category 1",
+    title: "Example category 1",
     slug: "example-category-1",
     menuHierarchy: 0,
     sectionType: "subsection",
@@ -91,7 +91,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505318",
-    name: "Example category 2",
+    title: "Example category 2",
     slug: "example-category-2",
     menuHierarchy: 1,
     sectionType: "subsection",
@@ -99,7 +99,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505319",
-    name: "Example category 3",
+    title: "Example category 3",
     slug: "example-category-3",
     menuHierarchy: 2,
     sectionType: "subsection",
@@ -107,7 +107,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505320",
-    name: "Example category 4",
+    title: "Example category 4",
     slug: "example-category-4",
     menuHierarchy: 3,
     sectionType: "subsection",
@@ -115,7 +115,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505321",
-    name: "Example category 5",
+    title: "Example category 5",
     slug: "example-category-5",
     menuHierarchy: 4,
     sectionType: "subsection",
@@ -123,7 +123,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505322",
-    name: "Example category 6",
+    title: "Example category 6",
     slug: "example-category-6",
     menuHierarchy: 5,
     sectionType: "subsection",
@@ -131,7 +131,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505323",
-    name: "Example category 7",
+    title: "Example category 7",
     slug: "example-category-7",
     menuHierarchy: 6,
     sectionType: "subsection",
@@ -139,7 +139,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505324",
-    name: "Example category 8",
+    title: "Example category 8",
     slug: "example-category-8",
     menuHierarchy: 7,
     sectionType: "subsection",
@@ -147,7 +147,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505325",
-    name: "Example category 9",
+    title: "Example category 9",
     slug: "example-category-9",
     menuHierarchy: 8,
     sectionType: "subsection",
@@ -155,7 +155,7 @@ const Categorydata: Category[] = [
   },
   {
     _id: "603b2c64e4cb147e18505326",
-    name: "Example category 10",
+    title: "Example category 10",
     slug: "example-category-10",
     menuHierarchy: 9,
     sectionType: "subsection",
@@ -219,7 +219,7 @@ const columns: ColumnDef<Category>[] = [
   },
 ];
 const formSchema = z.object({
-  name: z.string().min(2, {
+  title: z.string().min(2, {
     message: "Category & Subcategory must be at least 2 characters.",
   }),
   slug: z.string().min(2, {
@@ -274,7 +274,7 @@ export default function CategoryPage() {
     resolver: zodResolver(formSchema),
     mode: "all",
     defaultValues: {
-      name: "",
+      title: "",
       slug: "",
       description: "",
       keywords: [],
@@ -316,7 +316,7 @@ export default function CategoryPage() {
   };
 
   const slugTranslater = async (e: string) => {
-    const text = form.getValues("name");
+    const text = form.getValues("title");
 
     if (text) {
       translaterMutate(text);
@@ -325,19 +325,21 @@ export default function CategoryPage() {
     }
   };
 
-  const slugSeter = useCallback(async (e: string) => {
-    const generatedSlug = await slugBuilder(e);
-    setValue("slug", generatedSlug);
-  }, [setValue]);
+  const slugSeter = useCallback(
+    async (e: string) => {
+      const generatedSlug = await slugBuilder(e);
+      setValue("slug", generatedSlug);
+    },
+    [setValue],
+  );
 
- 
   useEffect(() => {
     if (slugData?.translation) {
-    slugSeter(slugData.translation);
-  }
-  }, [slugSeter,slugData]);
+      slugSeter(slugData.translation);
+    }
+  }, [slugSeter, slugData]);
 
- // useEffect(() => {
+  // useEffect(() => {
   // if (slugData?.translation) {
   //   slugSeter(slugData.translation);
   // }
@@ -388,7 +390,7 @@ export default function CategoryPage() {
                                       {AllCategories?.categories?.map(
                                         (e: any, index: any) => (
                                           <SelectItem key={index} value={e._id}>
-                                            {e.name}
+                                            {e.title}
                                           </SelectItem>
                                         ),
                                       )}
@@ -406,7 +408,7 @@ export default function CategoryPage() {
                       )}
                       <FormField
                         control={form.control}
-                        name="name"
+                        name="title"
                         render={({ field }) => {
                           return (
                             <FormItem>
@@ -422,7 +424,7 @@ export default function CategoryPage() {
                                 />
                               </FormControl>
                               {/* <FormDescription>
-                        This is your Category name.
+                        This is your Category title.
                       </FormDescription> */}
                               <FormMessage />
                             </FormItem>

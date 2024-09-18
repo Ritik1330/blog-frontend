@@ -1,5 +1,5 @@
 export type CategoryType = {
-  name: string;
+  title: string;
   slug: string;
   visibility?: "hamburgerMenu" | "mainMenu" | "both";
   menuHierarchy?: number;

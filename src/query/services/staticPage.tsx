@@ -1,15 +1,20 @@
 import axios from "axios";
-import { API_BASE_URL } from "../urls";
 
 export const newstaticPage = async (e: any) => {
-  const response = await axios.post(API_BASE_URL + "/staticPages", e, {
-    headers: {
-      "Content-Type": "application/json",
+  const response = await axios.post(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/staticPages`,
+    e,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
   return response.data;
 };
 export const getAllstaticPage = async (e: any) => {
-  const response = await axios.get(API_BASE_URL + "/staticPages");
+  const response = await axios.get(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/staticPages`,
+  );
   return response.data;
 };

@@ -32,8 +32,8 @@ import { notFound } from "next/navigation";
 type Props = any;
 
 export default async function page({ params }: Props) {
-  const parmes = params.post_slug;
-  const id = parmes.split("-").pop();
+  const parmes = params?.post_slug;
+  const id = parmes?.split("-")?.pop();
   const postData = await postDetails(id);
   if (!postData?.post) {
     notFound();
